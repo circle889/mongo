@@ -4,56 +4,18 @@ references:
   - &OTP25 mongooseim/cimg-erlang:25.3.2.9
   - &OTP26 mongooseim/cimg-erlang:26.2.2
   - &ENTRYPOINT ["/bin/sh", "-c", "eval ${INSTALL_DEPS_CMD:-echo} && echo __INJECT_FILES__ | eval ${BASE32DEC:-base32 --decode} | bash"]
-  # Caches created via the save_cache step are stored for up to 15 days
   - &CERT_KEY certs-cache-{{ checksum "certs_cache_key" }}-v3
   - &DEPS_CACHE_KEY deps-cache-{{ checksum "rebar.lock" }}-{{ checksum "big_tests/rebar.lock" }}-{{ checksum "otp_version" }}-v5
   - &BUILD_CACHE_KEY build-cache-{{ .Branch }}-{{ .Revision }}-{{ checksum "otp_version" }}-v6
 
-# List of references to be used inside executors block
-containers:
-  - &mysql_container
-    image: mysql:__MYSQL_VERSION__
-    environment:
-      - SQL_TEMP_DIR: /tmp/sql
-      - MYSQL_ROOT_PASSWORD: secret
-      - MYSQL_DATABASE: mongooseim
-      - MYSQL_USER: mongooseim
-      - MYSQL_PASSWORD: mongooseim_secret
-      - OLD_ENTRYPOINT: "./entrypoint.sh mysqld"
-      - ENV_FILE_CFG_PATH: "/etc/mysql/conf.d/mysql.cnf"
-      - ENV_FILE_CFG_DATA: "__MYSQL_CNF__"
-      - ENV_FILE_SQL_PATH: "/docker-entrypoint-initdb.d/mysql.sql"
-      - ENV_FILE_SQL_DATA: "__MYSQL_SQL__"
-      - ENV_FILE_SH_PATH: "/docker-entrypoint-initdb.d/docker-setup-mysql.sh"
-      - ENV_FILE_SH_DATA: "__MYSQL_SETUP__"
-      - ENV_FILE_CERT_PATH: "/tmp/sql/fake_cert.pem"
-      - ENV_FILE_CERT_DATA: "__MIM_CERT__"
-      - ENV_FILE_KEY_PATH: "/tmp/sql/fake_key.pem"
-      - ENV_FILE_KEY_DATA: "__MIM_KEY__"
-    entrypoint: *ENTRYPOINT
-
-# Define self-hosted runner executors for OTP25 and OTP26
+# Define the self-hosted runner's resource class 
 executors:
   otp_25:
     machine: true
-    resource_class: class/custom  # Changed to class/custom
+    resource_class: class/custom
   otp_26:
     machine: true
-    resource_class: class/custom  # Changed to class/custom
-  otp_25_redis:
-    machine: true
-    resource_class: class/custom  # Changed to class/custom
-  otp_26_redis:
-    machine: true
-    resource_class: class/custom  # Changed to class/custom
-  otp_26_redis_minio_rmq:
-    machine: true
-    resource_class: class/custom  # Changed to class/custom
-  otp_26_mysql_redis:
-    machine: true
-    resource_class: class/custom  # Changed to class/custom
-
-# The rest of the executors remain the same as per your original configuration
+    resource_class: class/custom
 
 commands:
   fetch_build_packages:
@@ -63,6 +25,7 @@ commands:
           command: |
             tools/circle-install-packages.sh \
             'libssl-dev unixodbc-dev unixodbc tdsodbc rsync zlib1g-dev'
+
   maybe_build_deps_and_cache:
     steps:
       - restore_cache:
@@ -83,11 +46,13 @@ commands:
           paths:
             - ~/project/_build/default/
             - ~/project/big_tests/_build/default/
+
   prepare_for_cache:
     steps:
       - run:
           name: Prepare for cache
           command: bash -c 'echo $OTP_VERSION-$ARCH > otp_version'
+
   cache_prod_build:
     parameters:
       arch:
@@ -102,6 +67,7 @@ commands:
       - save_cache:
           key: *BUILD_CACHE_KEY
           paths: ~/project/mongooseim-<<parameters.arch>>.tar.gz
+
   restore_prod_build:
     parameters:
       arch:
@@ -111,6 +77,7 @@ commands:
           echo $OTP_VERSION-<<parameters.arch>> > otp_version
       - restore_cache:
           key: *BUILD_CACHE_KEY
+
   run_coverage_analysis:
     steps:
       - run:
@@ -120,6 +87,7 @@ commands:
             echo "Success!"
             ./rebar3 codecov analyze
             tools/circle-upload-codecov.sh
+
   run_small_tests:
     steps:
       - run:
@@ -131,10 +99,9 @@ commands:
           command: |
             tools/test.sh -p small_tests -s true -e true
 
-# Jobs section
 jobs:
   build_in_docker:
-    executor: otp_25  # This uses the self-hosted runner
+    executor: otp_25
     parallelism: 1
     environment:
       SKIP_RELEASE: 1
@@ -142,7 +109,7 @@ jobs:
       SKIP_CERT_BUILD: 1
     steps:
       - checkout
-      - prepare_for_cache  # Now this command exists
+      - prepare_for_cache
       - fetch_build_packages
       - maybe_build_deps_and_cache
       - run: ./rebar3 compile
@@ -155,17 +122,15 @@ jobs:
       - persist_workspace
 
   small_tests_in_docker:
-    executor: otp_25_redis  # Using self-hosted runner
+    executor: otp_25_redis
     steps:
       - run_small_tests
       - run_coverage_analysis
 
-# Filters remain unchanged as per your original config
 filters: &all_tags
   tags:
     only: /^\d+\.\d+\.\d+([a-z0-9\-\+])*/
 
-# Workflows remain the same
 workflows:
   version: 2
   build_and_test:
