@@ -9,7 +9,7 @@ references:
   - &DEPS_CACHE_KEY deps-cache-{{ checksum "rebar.lock" }}-{{ checksum "big_tests/rebar.lock" }}-{{ checksum "otp_version" }}-v5
   - &BUILD_CACHE_KEY build-cache-{{ .Branch }}-{{ .Revision }}-{{ checksum "otp_version" }}-v6
 
-# list of references to be used inside executors block
+# List of references to be used inside executors block
 containers:
   - &mysql_container
     image: mysql:__MYSQL_VERSION__
@@ -36,24 +36,25 @@ containers:
 executors:
   otp_25:
     machine: true
-    resource_class: class/custom  # Use self-hosted runner here
+    resource_class: class/custom  # Changed to class/custom
   otp_26:
     machine: true
-    resource_class: class/custom  # Use self-hosted runner here
+    resource_class: class/custom  # Changed to class/custom
   otp_25_redis:
     machine: true
-    resource_class: class/custom
+    resource_class: class/custom  # Changed to class/custom
   otp_26_redis:
     machine: true
-    resource_class: class/custom
+    resource_class: class/custom  # Changed to class/custom
   otp_26_redis_minio_rmq:
     machine: true
-    resource_class: class/custom
+    resource_class: class/custom  # Changed to class/custom
   otp_26_mysql_redis:
     machine: true
-    resource_class: class/custom
+    resource_class: class/custom  # Changed to class/custom
 
-# commands
+# The rest of the executors remain the same as per your original configuration
+
 commands:
   fetch_build_packages:
     steps:
@@ -82,6 +83,11 @@ commands:
           paths:
             - ~/project/_build/default/
             - ~/project/big_tests/_build/default/
+  prepare_for_cache:
+    steps:
+      - run:
+          name: Prepare for cache
+          command: bash -c 'echo $OTP_VERSION-$ARCH > otp_version'
   cache_prod_build:
     parameters:
       arch:
@@ -125,6 +131,7 @@ commands:
           command: |
             tools/test.sh -p small_tests -s true -e true
 
+# Jobs section
 jobs:
   build_in_docker:
     executor: otp_25  # This uses the self-hosted runner
@@ -135,7 +142,7 @@ jobs:
       SKIP_CERT_BUILD: 1
     steps:
       - checkout
-      - prepare_for_cache
+      - prepare_for_cache  # Now this command exists
       - fetch_build_packages
       - maybe_build_deps_and_cache
       - run: ./rebar3 compile
@@ -153,10 +160,12 @@ jobs:
       - run_small_tests
       - run_coverage_analysis
 
+# Filters remain unchanged as per your original config
 filters: &all_tags
   tags:
     only: /^\d+\.\d+\.\d+([a-z0-9\-\+])*/
 
+# Workflows remain the same
 workflows:
   version: 2
   build_and_test:
