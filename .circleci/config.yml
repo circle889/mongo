@@ -17,7 +17,7 @@ jobs:
             tools/circle-generate-config.sh generated_config.yml
       - continuation/continue:
           configuration_path: /var/lib/circleci-runner/workdir/generated_config.yml
-jobs:
+
   build_and_test:
     machine: true
     resource_class: class/custom  # Use your self-hosted runner for this job too
