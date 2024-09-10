@@ -249,11 +249,10 @@ executors:
       - DOCKER_CONTAINERS:
           - image: *OTP26
           - *redis_container    
-
 commands:
   fetch_build_packages:
-    steps:
-      - run:
+     steps:
+       - run:
           name: Install packages necessary for building
           command: |
             tools/circle-install-packages.sh \
