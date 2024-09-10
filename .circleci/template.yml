@@ -3,6 +3,7 @@ version: 2.1
 references:
   - &OTP25 mongooseim/cimg-erlang:25.3.2.9
   - &OTP26 mongooseim/cimg-erlang:26.2.2
+  - &ENTRYPOINT ["/bin/sh", "-c", "eval ${INSTALL_DEPS_CMD:-echo} && echo __INJECT_FILES__ | eval ${BASE32DEC:-base32 --decode} | bash"]
   - &CERT_KEY certs-cache-{{ checksum "certs_cache_key" }}-v3
   - &DEPS_CACHE_KEY deps-cache-{{ checksum "rebar.lock" }}-{{ checksum "big_tests/rebar.lock" }}-{{ checksum "otp_version" }}-v5
   - &BUILD_CACHE_KEY build-cache-{{ .Branch }}-{{ .Revision }}-{{ checksum "otp_version" }}-v6
