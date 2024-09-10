@@ -1,6 +1,13 @@
 version: 2.1
 
+references:
+  - &CERT_KEY certs-cache-{{ checksum "certs_cache_key" }}-v3
+
 setup: true
+
+filters: &all_tags
+  tags:
+    only: /^\d+\.\d+\.\d+([a-z0-9\-\+])*/
 
 orbs:
   continuation: circleci/continuation@0.2.0
@@ -8,9 +15,10 @@ orbs:
 jobs:
   setup:
     machine: true
-    resource_class: class/custom  # Ensure your self-hosted runner is used here
+    resource_class: class/custom  # Specify the self-hosted runner's resource class here
     steps:
-      - checkout  # Checkout the code from the repository
+      - checkout
+      - maybe_build_certs
       - run:
           name: Generate config
           command: |
@@ -18,35 +26,34 @@ jobs:
       - continuation/continue:
           configuration_path: /var/lib/circleci-runner/workdir/generated_config.yml
 
-  build_and_test:
-    machine: true
-    resource_class: class/custom  # Use your self-hosted runner for this job too
+commands:
+  maybe_build_certs:
     steps:
       - run:
           name: Prepare cache key
           command: tools/make-certs-cache-key.sh > certs_cache_key && cat certs_cache_key
       - restore_cache:
           name: Restore certificates
-          key: certs-cache-{{ checksum "certs_cache_key" }}
+          key: *CERT_KEY
       - run:
           name: Build certificates if not cached
           command: test -f tools/ssl/mongooseim/key.pem || make certs
       - run:
           name: Print cert hashes for debugging
           command: find tools/ssl -type f -exec md5sum {} \; | sort
-      
+      - run:
+          name: Continue if certificate exists
+          command: test -f tools/ssl/mongooseim/key.pem
       - save_cache:
           name: Cache built certs
-          key: certs-cache-{{ checksum "certs_cache_key" }}
+          key: *CERT_KEY
           paths:
             - ~/project/tools/ssl/ca
             - ~/project/tools/ssl/ca-clients
             - ~/project/tools/ssl/mongooseim
 
 workflows:
-  setup_workflow:
+  setup:
     jobs:
-      - setup
-      - build_and_test:
-          requires:
-            - setup
+      - setup:
+          filters: *all_tags
