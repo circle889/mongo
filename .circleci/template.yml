@@ -78,6 +78,21 @@ commands:
       - restore_cache:
           key: *BUILD_CACHE_KEY
 
+  persist_workspace:
+    steps:
+      - run:
+          name: Persist workspace
+          command: |
+            mkdir -p /workspace && cp -R ~/project/* /workspace/
+      - persist_to_workspace:
+          root: /workspace
+          paths:
+            - "*"
+
+  restore_workspace:
+    steps:
+      - attach_workspace: {at: /workspace}
+
   run_coverage_analysis:
     steps:
       - run:
