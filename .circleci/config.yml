@@ -18,7 +18,7 @@ jobs:
       - run:  # Generate config
           name: Generate config
           command: |
-            tools/circle-generate-config.sh generated_config.yml
+            tools/circle-generate-config.sh /var/lib/circleci-runner/workdir/generated_config.yml
       - continuation/continue:  # Continue with generated config
           configuration_path: /var/lib/circleci-runner/workdir/generated_config.yml
 
