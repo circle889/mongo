@@ -12,7 +12,7 @@ orbs:
 jobs:
   setup:
     machine: true
-    resource_class: name/spaces  # Use self-hosted runner
+    resource_class: class/custom  # Use self-hosted runner
     steps:
       - checkout  # Checkout code
       - run:  # Generate config
@@ -24,7 +24,7 @@ jobs:
 
   build_and_test:
     machine: true
-    resource_class: name/spaces  # Use the self-hosted runner
+    resource_class: class/custom  # Use the self-hosted runner
     steps:
       - checkout  # Checkout code
       - run:  # Prepare cache key
