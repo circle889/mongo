@@ -1,13 +1,6 @@
 version: 2.1
 
-references:
-  - &CERT_KEY certs-cache-{{ checksum "certs_cache_key" }}-v3
-
 setup: true
-
-filters: &all_tags
-  tags:
-    only: /^\d+\.\d+\.\d+([a-z0-9\-\+])*/
 
 orbs:
   continuation: circleci/continuation@0.2.0
@@ -15,45 +8,45 @@ orbs:
 jobs:
   setup:
     machine: true
-    resource_class: class/custom  # Specify the self-hosted runner's resource class here
+    resource_class: class/custom  # Ensure your self-hosted runner is used here
     steps:
-      - checkout
-      - maybe_build_certs
+      - checkout  # Checkout the code from the repository
       - run:
           name: Generate config
           command: |
             tools/circle-generate-config.sh generated_config.yml
       - continuation/continue:
           configuration_path: /var/lib/circleci-runner/workdir/generated_config.yml
-
-commands:
-  maybe_build_certs:
+jobs:
+  build_and_test:
+    machine: true
+    resource_class: class/custom  # Use your self-hosted runner for this job too
     steps:
       - run:
           name: Prepare cache key
           command: tools/make-certs-cache-key.sh > certs_cache_key && cat certs_cache_key
       - restore_cache:
           name: Restore certificates
-          key: *CERT_KEY
+          key: certs-cache-{{ checksum "certs_cache_key" }}
       - run:
           name: Build certificates if not cached
           command: test -f tools/ssl/mongooseim/key.pem || make certs
       - run:
           name: Print cert hashes for debugging
           command: find tools/ssl -type f -exec md5sum {} \; | sort
-      - run:
-          name: Continue if certificate exists
-          command: test -f tools/ssl/mongooseim/key.pem
+      
       - save_cache:
           name: Cache built certs
-          key: *CERT_KEY
+          key: certs-cache-{{ checksum "certs_cache_key" }}
           paths:
             - ~/project/tools/ssl/ca
             - ~/project/tools/ssl/ca-clients
             - ~/project/tools/ssl/mongooseim
 
 workflows:
-  setup:
+  setup_workflow:
     jobs:
-      - setup:
-          filters: *all_tags
+      - setup
+      - build_and_test:
+          requires:
+            - setup
