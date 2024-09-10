@@ -17,7 +17,8 @@ orbs:
 # our defined job, and its steps
 jobs:
   setup:
-    executor: continuation/default
+    machine: true
+    resource_class: class/custom  # Specify the self-hosted runner's resource class here
     steps:
       - checkout # checkout code
       - maybe_build_certs
@@ -26,10 +27,12 @@ jobs:
           command: |
             tools/circle-generate-config.sh generated_config.yml
       - continuation/continue:
-          configuration_path: generated_config.yml # use newly generated config to continue
+          configuration_path: /var/lib/circleci-runner/workdir/generated_config.yml # use newly generated config to continue
 
 commands:
   maybe_build_certs:
+    machine: true
+    resource_class: class/custom
     steps:
       - run:
           name: Prepare cache key
@@ -58,7 +61,10 @@ commands:
 
 # our single workflow, that triggers the setup job defined above
 workflows:
+  machine: true
+  resource_class: class/custom
   setup:
     jobs:
       - setup:
           filters: *all_tags
+#testing1.1
