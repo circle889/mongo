@@ -1,4 +1,5 @@
 version: 2.1
+
 references:
   - &OTP25 mongooseim/cimg-erlang:25.3.2.9
   - &OTP26 mongooseim/cimg-erlang:26.2.2
